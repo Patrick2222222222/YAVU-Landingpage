@@ -1,0 +1,18 @@
+Website Asset Extraction Report
+========================================
+Source: https://www.yavu.de/
+Date: Wed Mar  4 19:56:52 UTC 2026
+
+Results:
+  Found:      0
+  Downloaded:  0
+  Skipped:     0 (below 5000 bytes)
+  Failed:      0
+
+Total download size: 0.0 MB
+
+Files by type:
+  videos: 0 files
+
+Output directory: /sessions/youthful-clever-einstein/mnt/outputs/GoHighLevel Landingpage/assets/yavu-homepage
+Manifest: /sessions/youthful-clever-einstein/mnt/outputs/GoHighLevel Landingpage/assets/yavu-homepage/manifest.json
