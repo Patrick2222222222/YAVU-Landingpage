@@ -2424,13 +2424,25 @@
                     <label>Nachricht (optional)</label>
                     <textarea name="message" rows="3" placeholder="Deine Fragen oder Anmerkungen..."></textarea>
                 </div>
-                <button type="submit" class="form-submit" id="submitBtn">Beratung Anfragen</button>
-                <p class="form-privacy">Mit dem Absenden stimmst du der Verarbeitung deiner Daten gem&auml;&szlig; unserer Datenschutzerkl&auml;rung zu.</p>
+                <div class="fg" style="margin-top:8px;">
+                    <label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer;font-weight:400;font-size:13px;line-height:1.45;color:#a8a8a8;">
+                        <input type="checkbox" name="privacy" id="privacyCheck" required style="margin-top:3px;flex-shrink:0;accent-color:#C5A55A;">
+                        <span>Ich habe die <a href="https://hyaluron-ohne-nadel.de/datenschutz" target="_blank" rel="noreferrer" style="color:#C5A55A;text-decoration:underline;">Datenschutzerkl&auml;rung</a> zur Kenntnis genommen und willige in die Verarbeitung meiner Daten zur Bearbeitung dieser Anfrage ein. Ich kann diese Einwilligung jederzeit per E-Mail an info@yavu.de widerrufen. *</span>
+                    </label>
+                </div>
+                <button type="submit" class="form-submit" id="submitBtn" style="margin-top:14px;">Beratung Anfragen</button>
             </form>
             <div class="form-success" id="formSuccess">
                 <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="#C5A55A" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>
                 <h3>Vielen Dank!</h3>
                 <p>Deine Anfrage ist eingegangen. Wir melden uns innerhalb von 24 Stunden bei dir.</p>
+                <div id="calendlyStep" style="display:none;margin-top:24px;padding-top:20px;border-top:1px solid rgba(197,165,90,0.25);">
+                    <p style="font-size:15px;color:#e8e8e8;margin-bottom:14px;">M&ouml;chtest du direkt einen Beratungstermin reservieren?</p>
+                    <a id="calendlyLink" href="#" target="_blank" class="btn-primary" style="display:inline-flex;align-items:center;gap:10px;">
+                        Jetzt Termin reservieren
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -2507,42 +2519,59 @@ function toggleFaq(btn) {
     }
 }
 
-// Form
+// Form — submittet an unser Backend (Proxy zu GHL + Customer-Record + Mail).
+// Vorher lag der GHL-Token im Klartext im HTML; das ist jetzt serverseitig.
+const LEAD_BACKEND = 'https://lizenzregister-production.up.railway.app/api/v1/public/lead-from-landing';
+
 async function submitForm(e) {
     e.preventDefault();
     const form = e.target;
     const btn = document.getElementById('submitBtn');
+    const privacyEl = document.getElementById('privacyCheck');
+    if (!privacyEl || !privacyEl.checked) {
+        alert('Bitte stimme der Datenschutzerklärung zu.');
+        return;
+    }
     btn.disabled = true;
     btn.textContent = 'Wird gesendet...';
 
     const d = new FormData(form);
     const payload = {
-        locationId: 'k5q08phKZMtTVfkmcyQu',
-        firstName: d.get('firstName'),
-        lastName: d.get('lastName'),
-        email: d.get('email'),
-        phone: d.get('phone'),
-        tags: ['lizenz-anfrage', 'landing-page'],
-        source: 'YAVU Landing Page',
-        customFields: [{ key: 'contact.lizenz_interesse', field_value: 'IRI Filler System' }]
+        first_name: d.get('firstName') || '',
+        last_name: d.get('lastName') || '',
+        email: d.get('email') || '',
+        phone: d.get('phone') || '',
+        city: d.get('city') || '',
+        activity: d.get('activity') || '',
+        message: d.get('message') || '',
+        source: 'iri-filler.de Landingpage',
+        privacy_accepted: true
     };
-    if (d.get('city')) payload.city = d.get('city');
-    if (d.get('activity')) payload.companyName = d.get('activity');
 
     try {
-        const r = await fetch('https://services.leadconnectorhq.com/contacts/upsert', {
+        const r = await fetch(LEAD_BACKEND, {
             method: 'POST',
-            headers: {
-                'Authorization': 'Bearer pit-e7b2b264-b7b1-4085-946c-368372adcd9e',
-                'Content-Type': 'application/json',
-                'Version': '2021-07-28'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        const data = await r.json().catch(() => ({}));
         if (r.ok) {
             form.style.display = 'none';
             document.getElementById('formSuccess').style.display = 'block';
-        } else throw new Error('API error');
+            // Calendly-Step nur einblenden wenn URL konfiguriert
+            if (data.calendly_url) {
+                const link = document.getElementById('calendlyLink');
+                const step = document.getElementById('calendlyStep');
+                if (link && step) {
+                    link.href = data.calendly_url;
+                    step.style.display = 'block';
+                }
+            }
+        } else {
+            alert(data.detail || 'Senden fehlgeschlagen, bitte später erneut versuchen.');
+            btn.disabled = false;
+            btn.textContent = 'Beratung Anfragen';
+        }
     } catch (err) {
         form.style.display = 'none';
         document.getElementById('formSuccess').style.display = 'block';
