@@ -2517,6 +2517,21 @@ function toggleFaq(btn) {
     }
 }
 
+// Nur einfache Kampagnenkennzeichen an den bestehenden Anfrage-Funnel weitergeben.
+// Andere URL-Parameter (insbesondere Kontakt- oder Sitzungsdaten) bleiben auf dieser Seite.
+const campaignParams = new URLSearchParams(window.location.search);
+const funnelParams = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'];
+document.querySelectorAll('a[href^="https://www.yavu.de/business/filler-system/lizenz/"]').forEach(link => {
+    const funnelUrl = new URL(link.href);
+    funnelParams.forEach(key => {
+        const value = campaignParams.get(key);
+        if (value && /^[A-Za-z0-9._-]{1,80}$/.test(value)) {
+            funnelUrl.searchParams.set(key, value);
+        }
+    });
+    link.href = funnelUrl.toString();
+});
+
 // Form — submittet an unser Backend (Proxy zu GHL + Customer-Record + Mail).
 // Vorher lag der GHL-Token im Klartext im HTML; das ist jetzt serverseitig.
 const LEAD_BACKEND = 'https://lizenzregister-production.up.railway.app/api/v1/public/lead-from-landing';
@@ -2571,9 +2586,10 @@ async function submitForm(e) {
             btn.textContent = 'Beratung Anfragen';
         }
     } catch (err) {
-        form.style.display = 'none';
-        document.getElementById('formSuccess').style.display = 'block';
         console.error('Submit error:', err);
+        alert('Verbindung fehlgeschlagen. Bitte versuche es erneut.');
+        btn.disabled = false;
+        btn.textContent = 'Beratung Anfragen';
     }
 }
 </script>
